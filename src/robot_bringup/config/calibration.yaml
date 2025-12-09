@@ -1,0 +1,3 @@
+# camera_color_optical_frame -> base_link transform, obtained from hand-eye calibration
+# in tx, ty, tz, qx, qy, qz, qw order
+hand_eye: [0.3539, -0.7046, 1.0448, 0.3028, -0.0148, -0.3054, 0.9027]

@@ -25,4 +25,6 @@
 
   <exec_depend>realsense2_camera</exec_depend>
   <exec_depend>image_proc</exec_depend>
+  <exec_depend>hand_eye_calibration</exec_depend>
+  <exec_depend>apriltag_ros</exec_depend>
 </package>

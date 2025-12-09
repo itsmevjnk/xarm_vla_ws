@@ -1,3 +1,9 @@
 [submodule "src/xarm_ros2"]
 	path = src/xarm_ros2
 	url = https://github.com/xArm-Developer/xarm_ros2.git
+[submodule "src/ros2_handeye_calibration"]
+	path = src/ros2_handeye_calibration
+	url = https://github.com/giuschio/ros2_handeye_calibration.git
+[submodule "src/easy_handeye2"]
+	path = src/easy_handeye2
+	url = https://github.com/marcoesposito1988/easy_handeye2
