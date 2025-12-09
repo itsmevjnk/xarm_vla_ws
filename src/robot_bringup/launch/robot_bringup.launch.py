@@ -18,8 +18,12 @@ def generate_launch_description():
             os.path.join(get_package_share_directory('xarm_api'), 'launch', 'xarm7_driver.launch.py')
         ),
         launch_arguments={
-            'robot_ip': arm_ip
+            'robot_ip': arm_ip,
+            'add_gripper': 'true'
         }.items()
+    )
+    arm_tf_pub = Node(
+        package='xarm_tf_pub', executable='pub_node'
     )
 
     cam_depth = LaunchConfiguration('cam_depth')
@@ -48,7 +52,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        declare_arm_ip, arm_bringup,
+        declare_arm_ip, arm_bringup, arm_tf_pub,
         declare_cam_depth, cam_bringup, cam_rect
     ])
     
