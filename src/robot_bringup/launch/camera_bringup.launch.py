@@ -8,32 +8,54 @@ import os
 from ament_index_python import get_package_share_directory
 
 def generate_launch_description():
+    name = LaunchConfiguration('name')
+    declare_name = DeclareLaunchArgument(
+        'name', default_value='camera',
+        description='Camera name'
+    )
+
+    serial = LaunchConfiguration('serial')
+    declare_serial = DeclareLaunchArgument(
+        'serial', default_value='',
+        description='Camera USB serial number (leave empty for automatic selection, does not work reliably with multi-camera setup)'
+    )
+
     depth = LaunchConfiguration('depth')
     declare_depth = DeclareLaunchArgument(
         'depth', default_value='false',
         description='Enable depth stream from RealSense camera'
     )
+
     cam_bringup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory('realsense2_camera'), 'launch', 'rs_launch.py')
         ),
         launch_arguments={
-            'enable_depth': depth
+            'enable_depth': depth,
+            'camera_name': name,
+            'camera_namespace': '',
+            'serial_no': serial
         }.items()
     )
     cam_rect = Node(
-        package='image_proc', executable='image_proc',
-        name='camera_rect_color',
-        namespace='camera/camera/color',
+        package='image_proc', executable='rectify_node',
+        name='color_rectify',
+        namespace=name,
         parameters=[{
             'camera_info_qos': 'transient_local'
         }],
         remappings=[
-            ('image', 'image_raw')
+            ('image', 'color/image_raw'),
+            ('camera_info', 'color/camera_info'),
+            ('image_rect', 'color/image_rect'),
+            ('image_rect/compressed', 'color/image_rect/compressed'),
+            ('image_rect/compressedDepth', 'color/image_rect/compressedDepth'),
+            ('image_rect/theora', 'color/image_rect/theora')
         ]
     )
 
     return LaunchDescription([
-        declare_depth, cam_bringup, cam_rect
+        declare_name, declare_serial, declare_depth,
+        cam_bringup, cam_rect
     ])
     
