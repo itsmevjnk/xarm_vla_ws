@@ -33,7 +33,7 @@ def generate_launch_description():
             'unnorm_key': unnorm_key
         }],
         remappings=[
-            ('image', '/camera/camera/color/image_rect'),
+            ('image', '/camera/color/image_rect'),
             ('instruction', '/vla/instruction'),
             ('output', '/vla/output')
         ]

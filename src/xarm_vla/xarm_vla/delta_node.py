@@ -4,17 +4,19 @@ from rclpy.node import Node
 # hack to call service from callback: https://gist.github.com/driftregion/14f6da05a71a57ef0804b68e17b06de5
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import ReentrantCallbackGroup
-from threading import Event
+from threading import Event, Thread
 
-from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, qos_profile_sensor_data
 
 from rcl_interfaces.msg import ParameterDescriptor
 from vla_msgs.msg import CartesianDelta
 from xarm_msgs.srv import MoveCartesian, SetInt16, SetInt16ById, GripperMove # using SDK move function
-
+from xarm_msgs.msg import RobotMsg
 import time
 
 from scipy.spatial.transform import Rotation
+
+import numpy as np
 
 def clamp(x, a, b):
     return max(a, min(x, b))
@@ -43,7 +45,7 @@ class VLANode(Node):
         )
 
         self.maxrot = (
-            self.declare_parameter('maxrot', 5.0, ParameterDescriptor(description='Maximum rotation about each axis (in deg)'))
+            self.declare_parameter('maxrot', 0.08, ParameterDescriptor(description='Maximum rotation about each axis (in rad)'))
                 .get_parameter_value().double_value
         )
 
@@ -56,6 +58,14 @@ class VLANode(Node):
             callback_group=self.cb_group
         )
 
+        self.current_pose = None
+        self.state_sub = self.create_subscription(
+            RobotMsg, '/xarm/robot_states',
+            self.state_cb,
+            qos_profile_sensor_data,
+            callback_group=self.cb_group
+        )
+
         self.move_cli = self.create_client(
             MoveCartesian, '/xarm/set_position',
             callback_group=self.cb_group
@@ -65,6 +75,12 @@ class VLANode(Node):
             GripperMove, '/xarm/set_gripper_position',
             callback_group=self.cb_group
         )
+
+        self.latest_cmd = None
+        self.cmd_event = Event()
+
+        self.worker_thread = Thread(target=self.worker_loop, daemon=True)
+        self.worker_thread.start()
 
         # enable arm
         rclpy.spin_until_future_complete(
@@ -96,58 +112,80 @@ class VLANode(Node):
 
         self.get_logger().info('node started')
 
+    def state_cb(self, msg: RobotMsg):
+        self.current_pose = np.float64(msg.pose)
+        self.get_logger().info(f'pose: x {self.current_pose[0]:.1f} y {self.current_pose[1]:.1f} z {self.current_pose[2]:.1f} dx {self.current_pose[3]:.1f} dy {self.current_pose[4]:.1f} dz {self.current_pose[5]:.1f}', throttle_duration_sec=1.0)
+
     def command_cb(self, msg: CartesianDelta):
-        if not self.move_cli.wait_for_service(timeout_sec=self.srv_timeout):
-            self.get_logger().error('timed out waiting for xArm move service - is the driver running?')
-            return
-        
-        move_req = MoveCartesian.Request()
-        move_req.wait = True # wait until completion before taking next command (TODO: maybe make the robot interruptible?)
+        self.latest_cmd = msg
+        self.cmd_event.set()
 
-        move_req.is_tool_coord = True
-        move_req.relative = True
+    def worker_loop(self):
+        while rclpy.ok():
+            self.cmd_event.wait()
 
-        move_req.speed = self.maxvel
-        move_req.acc = self.maxacc
-        
-        rot = Rotation.from_quat([
-            msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w
-        ])
-        rx, ry, rz = rot.as_euler('xyz', degrees=True).tolist() # get delta roll/pitch/yaw in degrees
+            msg = self.latest_cmd
+            self.cmd_event.clear()
+            
+            if self.current_pose is None:
+                self.get_logger().error('robot pose has not been received yet')
+                return
+            
+            if not self.move_cli.wait_for_service(timeout_sec=self.srv_timeout):
+                self.get_logger().error('timed out waiting for xArm move service - is the driver running?')
+                return
+            
+            move_req = MoveCartesian.Request()
+            move_req.wait = False # wait until completion before taking next command (TODO: maybe make the robot interruptible?)
 
-        move_req.pose = [
-            # translation (in mm)
-            clamp(msg.transform.translation.x * 1000, -self.maxtrans, self.maxtrans),
-            clamp(msg.transform.translation.y * 1000, -self.maxtrans, self.maxtrans),
-            clamp(msg.transform.translation.z * 1000, -self.maxtrans, self.maxtrans),
+            move_req.is_tool_coord = True
+            move_req.relative = False
 
-            # rotation (in degrees)
-            clamp(rx, -self.maxrot, self.maxrot),
-            clamp(ry, -self.maxrot, self.maxrot),
-            clamp(rz, -self.maxrot, self.maxrot)
-        ]
+            move_req.speed = self.maxvel
+            move_req.acc = self.maxacc
+            
+            rot = Rotation.from_quat([
+                msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w
+            ])
+            rx, ry, rz = rot.as_euler('xyz', degrees=False).tolist() # get delta roll/pitch/yaw in radians
 
-        grip_req = GripperMove.Request()
-        grip_req.pos = msg.gripper * 850 # 850 being the maximum pos
+            pose_offset = np.float64([
+                # translation (in mm)
+                clamp(msg.transform.translation.x * 1000, -self.maxtrans, self.maxtrans),
+                clamp(msg.transform.translation.y * 1000, -self.maxtrans, self.maxtrans),
+                clamp(msg.transform.translation.z * 1000, -self.maxtrans, self.maxtrans),
 
-        self.get_logger().info(f'movement cmd: dx {move_req.pose[0]:.1f} dy {move_req.pose[1]:.1f} dz {move_req.pose[2]:.1f} drx {move_req.pose[3]:.1f} dry {move_req.pose[4]:.1f} drz {move_req.pose[5]:.1f} grip {grip_req.pos:.1f}')
+                # rotation (in degrees)
+                clamp(rx, -self.maxrot, self.maxrot),
+                clamp(ry, -self.maxrot, self.maxrot),
+                clamp(rz, -self.maxrot, self.maxrot)
+            ])
 
-        move_event = Event()
-        grip_event = Event()
+            move_req.pose = (self.current_pose + pose_offset).tolist()
 
-        t_start = time.time()
+            grip_req = GripperMove.Request()
+            grip_req.pos = msg.gripper * 850 # 850 being the maximum pos
 
-        move_future = self.move_cli.call_async(move_req)
-        move_future.add_done_callback(lambda f, e=move_event: e.set())
-        move_event.wait() # wait for completion
+            self.get_logger().info(f'movement cmd: x {move_req.pose[0]:.1f} y {move_req.pose[1]:.1f} z {move_req.pose[2]:.1f} rx {move_req.pose[3]:.1f} ry {move_req.pose[4]:.1f} rz {move_req.pose[5]:.1f} grip {grip_req.pos:.1f}')
 
-        grip_future = self.gripper_cli.call_async(grip_req)
-        grip_future.add_done_callback(lambda f, e=grip_event: e.set())
-        grip_event.wait()
+            move_event = Event()
+            grip_event = Event()
 
-        t_end = time.time()
+            t_start = time.time()
 
-        self.get_logger().info(f'movement executed in {(t_end - t_start):.4f} sec')
+            # move_future = self.move_cli.call_async(move_req)
+            # move_future.add_done_callback(lambda f, e=move_event: e.set())
+            # move_event.wait() # wait for completion
+            self.move_cli.call(move_req)
+
+            # grip_future = self.gripper_cli.call_async(grip_req)
+            # grip_future.add_done_callback(lambda f, e=grip_event: e.set())
+            # grip_event.wait()
+            self.gripper_cli.call(grip_req)
+
+            t_end = time.time()
+
+            self.get_logger().info(f'movement executed in {(t_end - t_start):.4f} sec')
 
 def main(args=None):
     rclpy.init(args=args)
@@ -155,7 +193,8 @@ def main(args=None):
     node = VLANode()
 
     executor = MultiThreadedExecutor()
-    rclpy.spin(node, executor)
+    executor.add_node(node)
+    executor.spin()
 
     node.destroy_node()
     rclpy.shutdown()

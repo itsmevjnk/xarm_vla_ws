@@ -70,8 +70,8 @@ def generate_launch_description():
 
     maxrot = LaunchConfiguration('maxrot')
     declare_maxrot = DeclareLaunchArgument(
-        'maxrot', default_value='5.0',
-        description='Maximum rotation about each axis (in deg)'
+        'maxrot', default_value='0.08',
+        description='Maximum rotation about each axis (in rad)'
     )
 
     exec_node = Node(
