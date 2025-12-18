@@ -1,3 +1,4 @@
 [submodule "src/xarm_ros2"]
 	path = src/xarm_ros2
-	url = https://github.com/xArm-Developer/xarm_ros2.git
+	url = https://github.com/itsmevjnk/xarm_ros2.git
+    branch = riotlab
