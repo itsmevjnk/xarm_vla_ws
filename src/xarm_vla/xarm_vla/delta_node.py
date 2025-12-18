@@ -136,7 +136,7 @@ class VLANode(Node):
                 return
             
             move_req = MoveCartesian.Request()
-            move_req.wait = False # wait until completion before taking next command (TODO: maybe make the robot interruptible?)
+            move_req.wait = True # wait until completion before taking next command (TODO: maybe make the robot interruptible?)
 
             move_req.is_tool_coord = True
             move_req.relative = False
