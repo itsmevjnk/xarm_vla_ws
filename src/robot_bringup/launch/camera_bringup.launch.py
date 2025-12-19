@@ -26,6 +26,12 @@ def generate_launch_description():
         description='Enable depth stream from RealSense camera'
     )
 
+    tf = LaunchConfiguration('tf')
+    declare_tf = DeclareLaunchArgument(
+        'tf', default_value='true',
+        description='Publish camera TF'
+    )
+
     cam_bringup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory('realsense2_camera'), 'launch', 'rs_launch.py')
@@ -34,7 +40,8 @@ def generate_launch_description():
             'enable_depth': depth,
             'camera_name': name,
             'camera_namespace': '',
-            'serial_no': serial
+            'serial_no': serial,
+            'publish_tf': tf
         }.items()
     )
     cam_rect = Node(
