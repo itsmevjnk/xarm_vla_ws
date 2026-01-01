@@ -4,7 +4,7 @@
     branch = riotlab
 [submodule "src/easy_handeye2"]
 	path = src/easy_handeye2
-	url = https://github.com/marcoesposito1988/easy_handeye2.git
+	url = https://github.com/itsmevjnk/easy_handeye2.git
 [submodule "src/aruco_ros"]
 	path = src/aruco_ros
 	url = https://github.com/pal-robotics/aruco_ros.git
