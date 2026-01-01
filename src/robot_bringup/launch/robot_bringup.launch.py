@@ -39,6 +39,15 @@ def generate_launch_description():
         ]
     )
 
+    eye_on_base_pub = Node(
+        package='tf2_ros', executable='static_transform_publisher',
+        arguments=[
+            "0.004199609723041731", "-0.6370350508292455", "0.9684640464267686",
+            "-0.977570635392054", "0.16722200927121716", "-0.028232636865786184", "0.12488142636147731",
+            "link_base", "base_color_optical_frame"
+        ]
+    )
+
     cam_depth = LaunchConfiguration('cam_depth')
     declare_cam_depth = DeclareLaunchArgument(
         'cam_depth', default_value='false',
@@ -90,7 +99,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         declare_arm_ip, arm_bringup,
-        eye_on_hand_pub,
+        eye_on_hand_pub, eye_on_base_pub,
         declare_cam_depth,
         declare_base_cam_sn,
         declare_wrist_cam_sn,
