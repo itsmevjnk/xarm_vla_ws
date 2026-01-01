@@ -42,7 +42,8 @@ def generate_launch_description():
             'camera_namespace': '',
             'serial_no': serial,
             'publish_tf': tf,
-            'pointcloud.enable': depth
+            'pointcloud.enable': depth,
+            'align_depth.enable': depth
         }.items()
     )
     cam_rect = Node(
