@@ -41,7 +41,8 @@ def generate_launch_description():
             'camera_name': name,
             'camera_namespace': '',
             'serial_no': serial,
-            'publish_tf': tf
+            'publish_tf': tf,
+            'pointcloud.enable': depth
         }.items()
     )
     cam_rect = Node(
@@ -62,7 +63,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        declare_name, declare_serial, declare_depth,
+        declare_name, declare_serial, declare_depth, declare_tf,
         cam_bringup, cam_rect
     ])
     
