@@ -20,7 +20,7 @@ def generate_launch_description():
         'arm_ip', default_value='192.168.1.209',
         description='IP address for the xArm; printed on control box sticker'
     )
-    
+
     arm_api_bringup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory('robot_bringup'), 'launch', 'arm_bringup.launch.py')
@@ -116,6 +116,26 @@ def generate_launch_description():
         ]
     )
 
+    eye_on_hand_depth_pub = Node(
+        package='tf2_ros', executable='static_transform_publisher',
+        arguments=[
+            "0.015", "-0.000", "0.000",
+            "0.000", "0.000", "0.000", "1.000",
+            "wrist_color_optical_frame", "wrist_depth_optical_frame"
+        ],
+        condition=IfCondition(cam_depth)
+    )
+
+    eye_on_base_depth_pub = Node(
+        package='tf2_ros', executable='static_transform_publisher',
+        arguments=[
+            "0.015", "-0.000", "0.000",
+            "0.000", "0.000", "0.000", "1.000",
+            "base_color_optical_frame", "base_depth_optical_frame"
+        ],
+        condition=IfCondition(cam_depth)
+    )
+
     return LaunchDescription([
         declare_moveit,
         declare_arm_ip, arm_api_bringup, arm_moveit_bringup,
@@ -123,6 +143,7 @@ def generate_launch_description():
         declare_cam_depth,
         declare_base_cam_sn,
         declare_wrist_cam_sn,
-        cam_ns_bringup
+        cam_ns_bringup,
+        eye_on_hand_depth_pub, eye_on_base_depth_pub
     ])
     
