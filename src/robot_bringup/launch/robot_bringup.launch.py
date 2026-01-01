@@ -1,6 +1,7 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, GroupAction
 from launch_ros.actions import PushRosNamespace, Node
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 
@@ -8,18 +9,36 @@ import os
 from ament_index_python import get_package_share_directory
 
 def generate_launch_description():
+    moveit = LaunchConfiguration('moveit')
+    declare_moveit = DeclareLaunchArgument(
+        'moveit', default_value='false',
+        description='Use MoveIt! for arm control'
+    )
+
     arm_ip = LaunchConfiguration('arm_ip')
     declare_arm_ip = DeclareLaunchArgument(
         'arm_ip', default_value='192.168.1.209',
         description='IP address for the xArm; printed on control box sticker'
     )
-    arm_bringup = IncludeLaunchDescription(
+    
+    arm_api_bringup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory('robot_bringup'), 'launch', 'arm_bringup.launch.py')
         ),
         launch_arguments={
             'ip': arm_ip
-        }.items()
+        }.items(),
+        condition=UnlessCondition(moveit)
+    )
+
+    arm_moveit_bringup = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(get_package_share_directory('robot_bringup'), 'launch', 'moveit_bringup.launch.py')
+        ),
+        launch_arguments={
+            'ip': arm_ip
+        }.items(),
+        condition=IfCondition(moveit)
     )
 
     # eye_on_hand_pub = Node(
@@ -98,7 +117,8 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        declare_arm_ip, arm_bringup,
+        declare_moveit,
+        declare_arm_ip, arm_api_bringup, arm_moveit_bringup,
         eye_on_hand_pub, eye_on_base_pub,
         declare_cam_depth,
         declare_base_cam_sn,

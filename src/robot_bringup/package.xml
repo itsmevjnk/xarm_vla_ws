@@ -22,6 +22,7 @@
 
   <exec_depend>xarm_api</exec_depend>
   <exec_depend>xarm_tf_pub</exec_depend>
+  <exec_depend>xarm_moveit_config</exec_depend>
 
   <exec_depend>realsense2_camera</exec_depend>
   <exec_depend>image_proc</exec_depend>
