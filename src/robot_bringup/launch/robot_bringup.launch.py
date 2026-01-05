@@ -136,6 +136,11 @@ def generate_launch_description():
         condition=IfCondition(cam_depth)
     )
 
+    gripper_node = Node(
+        package='xarm_gripper_interface', executable='gripper_node',
+        namespace='xarm'
+    )
+
     return LaunchDescription([
         declare_moveit,
         declare_arm_ip, arm_api_bringup, arm_moveit_bringup,
@@ -144,6 +149,7 @@ def generate_launch_description():
         declare_base_cam_sn,
         declare_wrist_cam_sn,
         cam_ns_bringup,
-        eye_on_hand_depth_pub, eye_on_base_depth_pub
+        eye_on_hand_depth_pub, eye_on_base_depth_pub,
+        gripper_node
     ])
     
