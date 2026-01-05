@@ -1,0 +1,10 @@
+# unmasked depth image from camera
+sensor_msgs/Image depth
+sensor_msgs/CameraInfo info
+
+# flattened mask of size H * W
+uint8[] mask
+
+---
+geometry_msgs/PoseStamped[] grasps
+float32[] confidence

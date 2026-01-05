@@ -2,3 +2,5 @@ log/
 install/
 build/
 .vscode/
+*.npy
+*.pt

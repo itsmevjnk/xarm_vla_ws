@@ -141,6 +141,21 @@ def generate_launch_description():
         namespace='xarm'
     )
 
+    yolo = LaunchConfiguration('yolo')
+    declare_yolo = DeclareLaunchArgument(
+        'yolo', default_value='false',
+        description='Launch YOLO instance segmentation for base-mounted camera'
+    )
+
+    yolo_node = Node(
+        package='yolo_instseg', executable='yolo_node',
+        remappings=[
+            ('image_in', '/camera/base/color/image_rect'),
+            ('mask_out', '/camera/base/color/seg_mask'),
+            ('image_out', '/camera/base/color/image_seg')
+        ]
+    )
+
     return LaunchDescription([
         declare_moveit,
         declare_arm_ip, arm_api_bringup, arm_moveit_bringup,
@@ -150,6 +165,7 @@ def generate_launch_description():
         declare_wrist_cam_sn,
         cam_ns_bringup,
         eye_on_hand_depth_pub, eye_on_base_depth_pub,
-        gripper_node
+        gripper_node,
+        declare_yolo, yolo_node
     ])
     
